@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Список пользователей</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <h2>Список пользователей</h2>
+    <form name="bookForm">
+        <input type="hidden" name="id" value="0" />
+        <div class="form-group">
+            <label for="name">Название:</label>
+            <input class="form-control" name="name" />
+        </div>
+        <div class="form-group">
+            <label for="author">Автор:</label>
+            <input class="form-control" name="author" />
+		<div class="form-group">
+            <label for="year">Год:</label>
+            <input class="form-control" name="year" />
+        </div>
+        <div class="panel-body">
+            <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+            <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+        </div>
+    </form>
+    <table class="table table-condensed table-striped table-bordered">
+        <thead><tr><th>Id</th><th>Имя</th><th>Автор</th><th>Год</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+   
+    <script>
+    // Получение всех пользователей
+        async function GetBooks() {
+            // отправляет запрос и получаем ответ
+            const response = await fetch("/api/books", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            // если запрос прошел нормально
+            if (response.ok === true) {
+                // получаем данные
+                const books = await response.json();
+                let rows = document.querySelector("tbody"); 
+                books.forEach(book => {
+                    // добавляем полученные элементы в таблицу
+                    rows.append(row(book));
+                });
+            }
+        }
+        // Получение одного пользователя
+        async function GetBook(id) {
+            const response = await fetch("/api/books/" + id, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const book = await response.json();
+                const form = document.forms["bookForm"];
+                form.elements["id"].value = book._id;
+                form.elements["name"].value = book.name;
+                form.elements["author"].value = book.author;
+				form.elements["year"].value = book.year;
+            }
+        }
+        // Добавление пользователя
+        async function CreateBook(bookName, bookAuthor, bookYear) {
+  
+            const response = await fetch("api/books", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: bookName,
+					author: bookAuthor,
+                    year: parseInt(bookYear, 10)
+                })
+            });
+            if (response.ok === true) {
+                const book = await response.json();
+                reset();
+                document.querySelector("tbody").append(row(book));
+            }
+        }
+        // Изменение пользователя
+        async function EditBook(bookId, bookName, bookAuthor, bookYear) {
+            const response = await fetch("api/books", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: bookId,
+                    name: bookName,
+					author: bookAuthor,
+                    year: parseInt(bookYear, 10)
+                })
+            });
+            if (response.ok === true) {
+                const book = await response.json();
+                reset();
+                document.querySelector("tr[data-rowid='" + book._id + "']").replaceWith(row(book));
+            }
+        }
+        // Удаление пользователя
+        async function DeleteBook(id) {
+            const response = await fetch("/api/books/" + id, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const book = await response.json();
+                document.querySelector("tr[data-rowid='" + book._id + "']").remove();
+            }
+        }
+  
+        // сброс формы
+        function reset() {
+            const form = document.forms["bookForm"];
+            form.reset();
+            form.elements["id"].value = 0;
+        }
+        // создание строки для таблицы
+        function row(book) {
+  
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", book._id);
+  
+            const idTd = document.createElement("td");
+            idTd.append(book._id);
+            tr.append(idTd);
+  
+            const nameTd = document.createElement("td");
+            nameTd.append(book.name);
+            tr.append(nameTd);
+  
+            const authorTd = document.createElement("td");
+            authorTd.append(book.author);
+            tr.append(authorTd);
+            
+			const yearTd = document.createElement("td");
+            yearTd.append(book.year);
+            tr.append(yearTd);
+			
+            const linksTd = document.createElement("td");
+  
+            const editLink = document.createElement("a");
+            editLink.setAttribute("data-id", book._id);
+            editLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", e => {
+  
+                e.preventDefault();
+                GetBook(book._id);
+            });
+            linksTd.append(editLink);
+  
+            const removeLink = document.createElement("a");
+            removeLink.setAttribute("data-id", book._id);
+            removeLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", e => {
+  
+                e.preventDefault();
+                DeleteBook(book._id);
+            });
+  
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+  
+            return tr;
+        }
+        // сброс значений формы
+        document.getElementById("reset").click(function (e) {
+  
+            e.preventDefault();
+            reset();
+        })
+  
+        // отправка формы
+        document.forms["bookForm"].addEventListener("submit", e => {
+            e.preventDefault();
+            const form = document.forms["bookForm"];
+            const id = form.elements["id"].value;
+            const name = form.elements["name"].value;
+            const author = form.elements["author"].value;
+			const year = form.elements["year"].value;
+            if (id == 0)
+                CreateBook(name, author, year);
+            else
+                EditBook(id, name, author, year);
+        });
+  
+        // загрузка пользователей
+        GetBooks();
+    </script>
+</body>
+</html>
